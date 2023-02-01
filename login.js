@@ -7,6 +7,8 @@ const jwt = require('jsonwebtoken');
 
 // login route creating/returning a token on successful login
 router.post('/', (request, response) => {
+    console.log(request.body)
+
     let username = request.body.username;
     let password = request.body.password;
 
