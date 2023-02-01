@@ -1,0 +1,22 @@
+CREATE DATABASE cinemaSytemData WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
+
+
+create type usertype as enum ("ADMIN", "USER");
+
+--list enums
+select n.nspname as enum_schema,  
+       usertype.typname as enum_name,  
+       e.enumlabel as enum_value
+from pg_type usertype 
+   join pg_enum e on usertype.oid = e.enumtypid  
+   join pg_catalog.pg_namespace n ON n.oid = usertype.typnamespace;
+
+
+--
+create table users(
+	username char(15) PRIMARY KEY NOT NULL,
+	type usertype NOT NULL,
+	password char(40) NOT NULL
+);
+
+insert into users (username, type, password) values ('root', 'ADMIN', 'root');

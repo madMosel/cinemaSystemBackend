@@ -1,0 +1,8 @@
+{
+    "database": {
+        "host": "localhost",
+        "user": "whaat",
+        "password": "firestorm1506",
+        "db": "webtech21sessions"
+    }
+}
