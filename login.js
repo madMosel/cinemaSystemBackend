@@ -29,8 +29,8 @@ router.post('/', (request, response) => {
             /* form the token with userData (accessible when decoding token), jwtkey, expiry time */
 
             response.status(200).json({
-                "message": "login successful",
-                login: resultUser.login,
+                username: resultUser.login,
+                usertype: resultUser.type,
                 token: token
             });
 
