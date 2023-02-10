@@ -5,29 +5,26 @@ let cors = require('cors')
 const app = express();
 app.use(express.static('public')); // host public folder
 app.use(cors()); // allow all origins -> Access-Control-Allow-Origin: *
-
 const pool = require('./pool.js');
-
 let bodyParser = require('body-parser');
 app.use(bodyParser.json()); // support json encoded bodies
 
-const checkAuth = require('./check_auth');
+//following two are needed for socket.io
+const http = require('http')
+const io = require('socket.io')(http)
 
+const checkAuth = require('./check_auth');
 const loginRoutes = require('./login');
 //here the login mehtod from login.js is called
 app.use("/login", loginRoutes);
 
 // DEFAULT PAGE - NO AUTH NECCESARY
 app.get("/", (req, res) => {
-
-    // TODO: set content type (from EX1)
-
-    res.status(200).send("EX4: This is a database-backed application which uses JWT");
+    res.status(200).send("Cinema system backend");
 });
 
 
-
-//SIGN UP
+//SIGN UP (login is in login.js)
 app.post("/sign-up", function (request, response) {
     let username = request.body.username;
     let password = request.body.password;
@@ -46,7 +43,7 @@ app.post("/sign-up", function (request, response) {
                     })
                     response.send("welcome " + username);
                 })
-                .catch(error => {})
+                .catch(error => { })
         })
         .catch(error => {
             // handle error accessing db
@@ -55,6 +52,33 @@ app.post("/sign-up", function (request, response) {
             response.status(500).send("server error")
         })
 })
+
+
+// app.post("/logout", checkAuth, function(request, response) {
+//     console.log("logout function:")
+//     console.log(request)
+
+// })
+
+/* 
+ *    When buying tickets the app needs realtime-support to 
+ *    see live reservation of seets. There is done a registration
+ *    to get live updates to a theather with a shedule as key.
+ *    If a client reserves or buys a seat of a shedule, all clients
+ *    gets updated
+ * 
+ *    Client side
+ *    1. get current state of the theater (seat status - key is a schedule)
+ *    2. sign up to live updates - get socket
+ *    3. on leaving page detach and relase socket
+ * 
+ *    Server side
+ *    1. calculate theater state and prepare socket
+ *    2. on change reagarding theater and schedule update all clients
+ *    3. when no clients release model
+ */
+
+async function getHallState()
 
 
 

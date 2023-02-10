@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 // - set req.userData to the user information stored in the token's payload
 module.exports = (req, res, next) => {
     try {
+        console.log(req)
         let token = req.headers.authorization
         let verfied = jwt.verify(token, "secret")
         console.log(verfied)
