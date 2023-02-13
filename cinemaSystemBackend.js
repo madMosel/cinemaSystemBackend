@@ -13,10 +13,10 @@ app.use(bodyParser.json()); // support json encoded bodies
 const http = require('http')
 const io = require('socket.io')(http)
 
-const checkAuth = require('./check_auth');
+const userService = require('./user_service');
 const loginRoutes = require('./login');
 //here the login mehtod from login.js is called
-app.use("/login", loginRoutes);
+app.use("/login", loginRoutes.router);
 
 // DEFAULT PAGE - NO AUTH NECCESARY
 app.get("/", (req, res) => {
@@ -54,6 +54,79 @@ app.post("/sign-up", function (request, response) {
 })
 
 
+app.post("/update-database", userService.checkAdmin, async function (request, response) {
+    console.log(request.headers.changes)
+    let changes = JSON.parse(request.headers.changes)
+    let transactionClient = await pool.connect()
+    try {
+        await transactionClient.query('BEGIN')
+        for (let ds of changes.deleteSchedules) {
+            transactionClient.query(`delete from schedule where
+             movieid = $1 and theaterid = $2 and date = $3 and time = $4'`,
+                [ds.hallId, ds.movieId,
+                ds.dateTime.year + "-" + ds.dateTime.month + "-" + ds.dateTime.day,
+                ds.dateTime.hour + ":" + ds.dateTime.minute
+                ])
+            console.log("deleted schedule " + ds)
+        }
+
+        for (let dm of changes.deleteMovies) {
+            transactionClient.query("delete from ratings where movieid=$1", [dm.movieId])
+            transactionClient.query(
+                `delete from movies where id=$1`, [dm.movieId]
+            )
+        }
+
+        for (let dh of changes.deleteHalls) {
+            transactionClient.query("delete from theaters where id=$1", [dh.hallId])
+        }
+
+        let hallIdMap = new Map()
+        for (let h of changes.halls) {
+            if (h.hallId >= 0) throw new Error("HallId positive or 0!")
+            let newHallId = await transactionClient.query(`insert into theaters 
+            (numrows, numcols, name, dolby, d3, d4) 
+            values ($1, $2, $3, $4, $5, $6) returning id;`,
+                [h.seats.length, h.seats[0].length, h.hallName, h.dolby, h.d3, h.d4]
+            )
+            console.log("new hall id: " + newHallId.rows[0].id)
+            hallIdMap.set(h.hallId, newHallId.rows[0].id)
+        }
+
+        console.log("inserting new movies...")
+        let movieIdMap = new Map()
+        for (let m of changes.movies) {
+            if (m.movieId >= 0) if (h.hallId >= 0) throw new Error("Movie positive or 0!")
+            let newMovieId = await transactionClient.query(`insert into movies (title, age, duration, posterurl, description, price) 
+            values ($1, $2, $3, $4, $5, $6) returning id`,
+                [m.movieTitle, m.age, m.duration, (m.poster ? m.poster : 'd'), m.description, m.price])
+            console.log("created movie " + m.movieTitle)
+            movieIdMap.set(m.movieId, newMovieId.rows[0].id)
+        }
+
+        for (let s of changes.schedules) {
+            console.log((s.movieId > 0? s.movieId : movieIdMap.get(s.movieId)))
+            transactionClient.query(`insert into schedules (movieId, theaterid, date, "time") 
+            values ($1, $2, $3, $4)`, [
+                (s.movieId > 0? s.movieId : movieIdMap.get(s.movieId)),
+                s.hallId > 0? s.movieId: hallIdMap.get(s.movieId),
+                s.dateTime.year + "-" + s.dateTime.month + "-" + s.dateTime.day,
+                s.dateTime.hour + ":" + s.dateTime.minute
+            ])
+        }
+        console.log("end transaction. committing...")
+        transactionClient.query('COMMIT')
+    } catch (e) {
+        await transactionClient.query('ROLLBACK')
+        throw e
+    } finally {
+        transactionClient.release()
+    }
+
+    response.status(200).send()
+})
+
+
 // app.post("/logout", checkAuth, function(request, response) {
 //     console.log("logout function:")
 //     console.log(request)
@@ -78,13 +151,13 @@ app.post("/sign-up", function (request, response) {
  *    3. when no clients release model
  */
 
-async function getHallState()
+// async function getHallState()
 
 
 
 
 //REQUEST PRODUCT LIST FROM DATABASE AND SEND TO CLIENT
-app.get("/products", checkAuth, function (request, response) {
+app.get("/products", userService.checkLogin, function (request, response) {
     pool.query('SELECT * from users')
         .then(database_result => {
             console.log(database_result)
@@ -100,7 +173,7 @@ app.get("/products", checkAuth, function (request, response) {
 
 
 //REQUEST SINGLE PRODUCT DATA FROM DATABASE AND SEND TO CLIENT
-app.get('/products/?*', checkAuth, function (request, response) {
+app.get('/products/?*', userService.checkLogin, function (request, response) {
     console.log("GET /products/?* callback")
     let pathname = url.parse(request.url).pathname
     let product_id = pathname.replace("/products/", "")
