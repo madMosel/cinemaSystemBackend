@@ -191,7 +191,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
 app.get("/load-public-data", function (request, response) {
     let halls = [], movies = [], schedules = []
     let hallMap = new Map(), geometryMap = new Map(), movieMap = new Map()
-    pool.query("select * from theaters").then(db_result => {
+    let theatersPromise = pool.query("select * from theaters").then(db_result => {
         for (let row of db_result.rows) {
             let c = new classes.CinemaHall(row.id, row.name, [], row.dolby, row.d3, row.d4)
             halls.push(c)
@@ -200,7 +200,7 @@ app.get("/load-public-data", function (request, response) {
         }
     })
     let sRow = []
-    pool.query("select * from seats order by theaterid asc, nr asc").then(db_result => {
+    let seatsPromise = pool.query("select * from seats order by theaterid asc, nr asc").then(db_result => {
         for (let row of db_result.rows) {
             let s = new classes.Seat(row.nr, row.category, row.state)
             sRow.push(s)
@@ -210,25 +210,34 @@ app.get("/load-public-data", function (request, response) {
             }
         }
     })
-    pool.query("select * from movies").then(db_result => {
+    let moviesPromise = pool.query("select * from movies").then(db_result => {
         for (let row of db_result.rows) {
-            let m = new classes.Movie(row.id, row.title, row.age, row.duration, row.posterURL, row.description, [], row.price)
+            let m = new classes.Movie(row.id, row.title, row.age, row.duration, row.posterurl, row.description, [], row.price)
             movies.push(m)
             movieMap.set(row.id, m)
         }
     })
-    pool.query("select * from ratings").then(db_result => {
+    let raitingsPromise = pool.query("select * from ratings").then(db_result => {
         for (let row of db_result.rows) {
             movieMap.get(row.movieid).ratings.push(new classes.Rating(row.stars, row.description))
         }
     })
-    pool.query("select * from schedules").then(db_result => {
+    let schedulesPromise = pool.query("select * from schedules").then(db_result => {
         for (let row of db_result.rows) {
             schedules.push(new classes.Schedule(row.movieid, row.theaterid, helpers.parsePeriodToNiceDate(row.period)))
         }
     })
     
-    response.status(200).send()
+    Promise.all([theatersPromise, seatsPromise, moviesPromise, raitingsPromise, schedulesPromise]).then(()=>{
+        response.status(200).send({
+            halls: halls,
+            movies: movies,
+            schedules: schedules
+        })
+    }).catch (e => {
+        console.log(e)
+        response.status(500).send("error during db operation!")
+    })
 })
 
 

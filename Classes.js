@@ -1,7 +1,7 @@
 
 class Seat {
     constructor(id, category, state) {
-        this.id = id , this.category = category, this.state = state
+        this.id = id, this.category = category, this.state = state
     }
 }
 const seatCategory = ["Normal", "Premium", "Handicap"]
@@ -13,7 +13,7 @@ class CinemaHall {
         hallId, hallName, seats, dolby, d3, d4
     ) {
         this.hallId = hallId
-        this.hallName = hallName
+        this.hallName = hallName.trim()
         this.seats = seats
         this.dolby = dolby
         this.d3 = d3
@@ -25,14 +25,14 @@ class Movie {
     constructor(
         movieId, movieTitle, age, duration, poster, description, ratings, price
     ) {
-        this.movieId,
-            this.movieTitle,
-            this.age,
-            this.duration,
-            this.poster, //url of pic
-            this.description,
-            this.ratings,
-            this.price
+        this.movieId = movieId
+        this.movieTitle = movieTitle.trim()
+        this.age = age
+        this.duration = duration
+        this.poster = poster.trim()
+        this.description = description.trim()
+        this.ratings = ratings
+        this.price = price
     }
 }
 
@@ -42,7 +42,7 @@ class Rating {
         stars, description
     ) {
         this.stars = stars
-        this.description = description
+        this.description = description.trim()
     }
 }
 
@@ -134,8 +134,8 @@ class Login {
         username,
         usertype
     ) {
-        this.username = username
-        this.usertype = usertype
+        this.username = username.trim()
+        this.usertype = usertype.trim()
     }
 }
 
@@ -146,7 +146,11 @@ class Ticket {
         schedule,
         username,
         seatId
-    ) { }
+    ) {
+        this.schedule = schedule
+        this.username = username
+        this.seatId = seatId
+    }
 }
 
-module.exports = { Login, CinemaHall, Seat, seatCategory, seatStates, Movie, Rating, stars, Schedule, NiceDate }
+module.exports = { Login, CinemaHall, Seat, seatCategory, seatStates, Movie, Rating, stars, Schedule, NiceDate, Ticket }
