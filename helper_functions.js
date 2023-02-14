@@ -1,3 +1,5 @@
+const { NiceDate } = require("./Classes")
+
 function addMinutes(datetime, mintues) {
     let date = new Date(datetime)
     date.setMinutes(date.getMinutes() + mintues)
@@ -14,4 +16,12 @@ function getScheduleTimeStringFromScheduleDateTime(dateTime, minutes) {
     return "[" + beginString + ", " + endString + "]"
 }
 
-module.exports = { getScheduleTimeStringFromScheduleDateTime }
+function parsePeriodToNiceDate(period) {
+    let timestrings = JSON.parse(period)
+    let start = new Date(timestrings[0])
+    // let end = new Date(timestrings[1])
+    // let duration = parseInt((end - start / (1000 * 60)))
+    return new NiceDate(start.getFullYear(), start.getMonth() + 1, start.getDate(), start.getHours(), start.getMinutes())
+}
+
+module.exports = { getScheduleTimeStringFromScheduleDateTime, parsePeriodToNiceDate }

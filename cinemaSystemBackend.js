@@ -9,6 +9,8 @@ const pool = require('./pool.js');
 let bodyParser = require('body-parser');
 app.use(bodyParser.json()); // support json encoded bodies
 
+const classes = require('./Classes')
+
 //following two are needed for socket.io
 const http = require('http')
 const io = require('socket.io')(http)
@@ -85,8 +87,8 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
 
         console.log("deleting halls ... ")
         for (let dh of changes.deleteHalls) {
-           await transactionClient.query("delete from seats where theaterid = $1", [dh.hallId])
-           await transactionClient.query("delete from theaters where id=$1", [dh.hallId])
+            await transactionClient.query("delete from seats where theaterid = $1", [dh.hallId])
+            await transactionClient.query("delete from theaters where id=$1", [dh.hallId])
         }
 
         console.log("inserting new theaters...")
@@ -99,12 +101,12 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
                 [h.seats.length, h.seats[0].length, h.hallName, h.dolby, h.d3, h.d4]
             )).rows[0].id
 
-            let countseats=0;
+            let countseats = 0;
             for (let row of h.seats) {
                 for (let seat of row) {
                     transactionClient.query(`insert into seats (theaterid, nr, category, state)
-                        values ($1,$2,$3,$4)`, 
-                        [newHallId, countseats++, seat.category, seat.state] )
+                        values ($1,$2,$3,$4)`,
+                        [newHallId, countseats++, seat.category, seat.state])
                 }
             }
 
@@ -185,6 +187,49 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
 // async function getHallState()
 
 
+//LOAD PUBLIC DATA
+app.get("/load-public-data", function (request, response) {
+    let halls = [], movies = [], schedules = []
+    let hallMap = new Map(), geometryMap = new Map(), movieMap = new Map()
+    pool.query("select * from theaters").then(db_result => {
+        for (let row of db_result.rows) {
+            let c = new classes.CinemaHall(row.id, row.name, [], row.dolby, row.d3, row.d4)
+            halls.push(c)
+            hallMap.set(c.hallId, c)
+            geometryMap.set(c.hallId, row.numcols)
+        }
+    })
+    let sRow = []
+    pool.query("select * from seats order by theaterid asc, nr asc").then(db_result => {
+        for (let row of db_result.rows) {
+            let s = new classes.Seat(row.nr, row.category, row.state)
+            sRow.push(s)
+            if (sRow.length === geometryMap.get(row.theaterid)) {
+                hallMap.get(row.theaterid).seats.push(sRow)
+                sRow = []
+            }
+        }
+    })
+    pool.query("select * from movies").then(db_result => {
+        for (let row of db_result.rows) {
+            let m = new classes.Movie(row.id, row.title, row.age, row.duration, row.posterURL, row.description, [], row.price)
+            movies.push(m)
+            movieMap.set(row.id, m)
+        }
+    })
+    pool.query("select * from ratings").then(db_result => {
+        for (let row of db_result.rows) {
+            movieMap.get(row.movieid).ratings.push(new classes.Rating(row.stars, row.description))
+        }
+    })
+    pool.query("select * from schedules").then(db_result => {
+        for (let row of db_result.rows) {
+            schedules.push(new classes.Schedule(row.movieid, row.theaterid, helpers.parsePeriodToNiceDate(row.period)))
+        }
+    })
+    
+    response.status(200).send()
+})
 
 
 //REQUEST PRODUCT LIST FROM DATABASE AND SEND TO CLIENT
@@ -200,7 +245,6 @@ app.get("/products", userService.checkLogin, function (request, response) {
             response.send(error)
         })
 })
-
 
 
 //REQUEST SINGLE PRODUCT DATA FROM DATABASE AND SEND TO CLIENT

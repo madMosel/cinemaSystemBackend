@@ -1,6 +1,8 @@
 
 class Seat {
-    constructor(id, category, state) {}
+    constructor(id, category, state) {
+        this.id = id , this.category = category, this.state = state
+    }
 }
 const seatCategory = ["Normal", "Premium", "Handicap"]
 const seatStates = ["FREE", "RESERVED", "BOOKED"]
@@ -8,40 +10,43 @@ const seatStates = ["FREE", "RESERVED", "BOOKED"]
 
 class CinemaHall {
     constructor(
-        hallId,
-        hallName,
-        seats,
-        dolby,
-        d3,
-        d4
+        hallId, hallName, seats, dolby, d3, d4
     ) {
-
+        this.hallId = hallId
+        this.hallName = hallName
+        this.seats = seats
+        this.dolby = dolby
+        this.d3 = d3
+        this.d4 = d4
     }
 }
 
 class Movie {
     constructor(
-        movieId,
-        movieTitle,
-        age,
-        duration,
-        poster, //url of pic
-        description,
-        ratings,
-        price
+        movieId, movieTitle, age, duration, poster, description, ratings, price
     ) {
-
+        this.movieId,
+            this.movieTitle,
+            this.age,
+            this.duration,
+            this.poster, //url of pic
+            this.description,
+            this.ratings,
+            this.price
     }
 }
 
 
 class Rating {
     constructor(
-        stars,
-        description
-    ) { }
+        stars, description
+    ) {
+        this.stars = stars
+        this.description = description
+    }
 }
 
+const stars = [1, 2, 3, 4, 5]
 
 class LocalChanges {
     constructor(
@@ -53,19 +58,21 @@ class LocalChanges {
         deleteSchedules,
         newHallCounter,
         newMovieCounter
-    ) {}
+    ) { }
 }
 
 
 
 class NiceDate {
     constructor(
-        year,
-        month,
-        day,
-        hour,
-        minute,
-    ) {}
+        year, month, day, hour, minute
+    ) {
+        this.year = year
+        this.month = month
+        this.day = day
+        this.hour = hour
+        this.minute = minute
+    }
 }
 
 
@@ -97,10 +104,12 @@ function compeareNiceDatesOnEquality(a, b) {
 
 class Schedule {
     constructor(
-        movieId,
-        hallId,
-        dateTime
-    ) {}
+        movieId, hallId, dateTime
+    ) {
+        this.movieId = movieId
+        this.hallId = hallId
+        this.dateTime = dateTime
+    }
 }
 
 /**
@@ -121,7 +130,7 @@ function compareSchedules(a, b) {
 class Login {
     username
     usertype
-    constructor (
+    constructor(
         username,
         usertype
     ) {
@@ -133,11 +142,11 @@ class Login {
 const usertypes = ["ADMIN", "USER"]
 
 class Ticket {
-    constructor (
+    constructor(
         schedule,
         username,
         seatId
-    ) {}
+    ) { }
 }
 
-module.exports = {Login}
+module.exports = { Login, CinemaHall, Seat, seatCategory, seatStates, Movie, Rating, stars, Schedule, NiceDate }
