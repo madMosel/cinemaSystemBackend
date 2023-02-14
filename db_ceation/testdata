@@ -1,6 +1,10 @@
-insert into movies (title, age, duration, price) values ('testmovie', 4, 90, 10);
-insert into theaters (name, numrows, numcols, dolby, d3, d4) values ('testteather', 1,1,false,false,false);
+delete from schedules where movieid < 1000;
+delete from movies where id < 1000;
+delete from seats where theaterId < 1000;
+delete from theaters where id < 1000;
 
 ALTER SEQUENCE movies_id_seq RESTART WITH 1;
 ALTER SEQUENCE theaters_id_seq RESTART WITH 1;
 
+insert into movies (title, age, duration, price) values ('testmovie', 4, 90, 10);
+insert into theaters (name, numrows, numcols, dolby, d3, d4) values ('testteather', 1,1,false,false,false);

@@ -75,7 +75,7 @@ create table schedules (
 	movieId int NOT NULL,
 	constraint FK_movieId FOREIGN KEY (movieId) references movies(id),
 	
-	startdatetime timestamp not null,
-	enddatetime timestamp not null check (enddatetime > startdatetime),
-	constraint scheduleKEY PRIMARY KEY (movieId, theaterId, startdatetime)
+	period tsrange NOT NULL,
+	EXCLUDE USING gist ( theaterid with =, movieid with = , period with &&),
+	constraint scheduleKEY PRIMARY KEY (movieId, theaterId, period)
 );
