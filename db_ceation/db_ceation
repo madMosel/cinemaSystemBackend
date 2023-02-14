@@ -75,7 +75,7 @@ create table schedules (
 	movieId int NOT NULL,
 	constraint FK_movieId FOREIGN KEY (movieId) references movies(id),
 	
-	date date NOT NULL,
-	time time NOT NULL,
-	constraint scheduleKEY PRIMARY KEY (movieId, theaterId, date, time)
+	startdatetime timestamp not null,
+	enddatetime timestamp not null check (enddatetime > startdatetime),
+	constraint scheduleKEY PRIMARY KEY (movieId, theaterId, startdatetime)
 );
