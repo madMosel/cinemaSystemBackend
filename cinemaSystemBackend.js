@@ -229,6 +229,7 @@ app.get("/load-public-data", function (request, response) {
     })
     
     Promise.all([theatersPromise, seatsPromise, moviesPromise, raitingsPromise, schedulesPromise]).then(()=>{
+        console.log
         response.status(200).send({
             halls: halls,
             movies: movies,
