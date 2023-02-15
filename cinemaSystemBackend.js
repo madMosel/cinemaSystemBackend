@@ -203,12 +203,14 @@ app.get("/load-public-data", function (request, response) {
     let sRow = []
     let seatsPromise = pool.query("select * from seats order by theaterid asc, nr asc").then(db_result => {
         for (let row of db_result.rows) {
-            let s = new classes.Seat(row.nr, row.category, row.state)
-            sRow.push(s)
-            if (sRow.length === geometryMap.get(row.theaterid)) {
-                hallMap.get(row.theaterid).seats.push(sRow)
-                sRow = []
-            }
+            Promise.resolve(theatersPromise).then(() => {
+                let s = new classes.Seat(row.nr, row.category, row.state)
+                sRow.push(s)
+                if (sRow.length === geometryMap.get(row.theaterid)) {
+                    hallMap.get(row.theaterid).seats.push(sRow)
+                    sRow = []
+                }
+            })
         }
     })
     let moviesPromise = pool.query("select * from movies").then(db_result => {
@@ -219,9 +221,11 @@ app.get("/load-public-data", function (request, response) {
         }
     })
     let raitingsPromise = pool.query("select * from ratings").then(db_result => {
-        for (let row of db_result.rows) {
-            movieMap.get(row.movieid).ratings.push(new classes.Rating(row.stars, row.description))
-        }
+        Promise.resolve(moviesPromise).then(() => {
+            for (let row of db_result.rows) {
+                movieMap.get(row.movieid).ratings.push(new classes.Rating(row.stars, row.description))
+            }
+        })
     })
     let schedulesPromise = pool.query("select * from schedules").then(db_result => {
         for (let row of db_result.rows) {
@@ -279,7 +283,7 @@ app.post("/hall-state", userService.checkLogin, function (request, response) {
     Promise.all([ticketsPromise, hallPromise, seatsPromise]).then(() => {
         for (let row of hall.seats) {
             for (let seat of row) {
-                if(ocupiedSeats.has(seat.id)) seat.state = "BOOKED"
+                if (ocupiedSeats.has(seat.id)) seat.state = "BOOKED"
             }
         }
         response.status(200).send(hall)
