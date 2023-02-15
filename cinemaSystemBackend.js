@@ -150,7 +150,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
         response.status(200).send()
     } catch (e) {
         console.log("errors during transaction, rolling back...")
-        console.log(console.error())
+        console.log(e)
         await transactionClient.query('ROLLBACK')
         response.status(500).send()
     } finally {
