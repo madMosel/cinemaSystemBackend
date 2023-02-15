@@ -68,6 +68,7 @@ create table ratings (
 	constraint ratingKEY PRIMARY KEY (movieId, username)
 );
 
+CREATE EXTENSION btree_gist;
 create table schedules (
 	theaterId int NOT NULL,
 	constraint FK_theaterId FOREIGN KEY (theaterId) references theaters(id),
@@ -79,3 +80,19 @@ create table schedules (
 	EXCLUDE USING gist ( theaterid with =, movieid with = , period with &&),
 	constraint scheduleKEY PRIMARY KEY (movieId, theaterId, period)
 );
+
+create table tickets (
+	theaterid int NOT NULL,
+	movieId int NOT NULL,
+	period tsrange NOT NULL,
+	FOREIGN KEY (movieId, theaterId, period) references schedules (movieId, theaterId, period),
+	
+	seatnr NOT NULL
+	FOREIGN KEY (seatnr, theaterid) references seats(nr, theaterid)
+	
+	username char(15) NOT NULL,
+	constraint FK_username FOREIGN KEY (username) references users(username),
+
+	constraint ticketsKEY PRIMARY KEY (movieId, theaterId, period, username, seatnr)
+);
+

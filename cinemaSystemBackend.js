@@ -21,7 +21,8 @@ const loginRoutes = require('./login');
 app.use("/login", loginRoutes.router);
 
 
-const helpers = require('./helper_functions')
+const helpers = require('./helper_functions');
+const { pathToFileURL } = require('url');
 
 // DEFAULT PAGE - NO AUTH NECCESARY
 app.get("/", (req, res) => {
@@ -60,7 +61,6 @@ app.post("/sign-up", function (request, response) {
 
 
 app.post("/update-database", userService.checkAdmin, async function (request, response) {
-    console.log(request.headers.changes)
     let changes = JSON.parse(request.headers.changes)
     console.log("deleting schedules ... ")
     let transactionClient = await pool.connect()
@@ -187,6 +187,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
 // async function getHallState()
 
 
+
 //LOAD PUBLIC DATA
 app.get("/load-public-data", function (request, response) {
     let halls = [], movies = [], schedules = []
@@ -227,17 +228,64 @@ app.get("/load-public-data", function (request, response) {
             schedules.push(new classes.Schedule(row.movieid, row.theaterid, helpers.parsePeriodToNiceDate(row.period)))
         }
     })
-    
-    Promise.all([theatersPromise, seatsPromise, moviesPromise, raitingsPromise, schedulesPromise]).then(()=>{
+
+    Promise.all([theatersPromise, seatsPromise, moviesPromise, raitingsPromise, schedulesPromise]).then(() => {
         console.log
         response.status(200).send({
             halls: halls,
             movies: movies,
             schedules: schedules
         })
-    }).catch (e => {
+    }).catch(e => {
         console.log(e)
         response.status(500).send("error during db operation!")
+    })
+})
+
+
+app.post("/hall-state", userService.checkLogin, function (request, response) {
+    console.log("/hall-state")
+    let schedule = JSON.parse(request.headers.schedule)
+    let dt = schedule.dateTime
+    let timestamp = dt.year + "-" + dt.month + "-" + dt.day + " " + dt.hour + ":" + dt.minute
+    let ocupiedSeats = new Set()
+    let ticketsPromise = pool.query("select * from tickets where theaterid = $1 and movieid = $2 and period @> $3::timestamp",
+        [schedule.hallId, schedule.movieId, timestamp])
+        .then(db_result => {
+            console.log(db_result.rows)
+            for (let row of db_result.rows) ocupiedSeats.add(row.seatnr)
+        })
+
+    let hall, numcols;
+    let hallPromise = pool.query("select * from theaters where id = $1", [schedule.hallId]).then(db_result => {
+        let h = db_result.rows[0]
+        hall = new classes.CinemaHall(h.id, h.name, [], h.dolby, h.d3, h.d4)
+        numcols = h.numcols
+    })
+
+    let seatsPromise = pool.query("select * from seats where theaterid = $1 order by nr asc", [schedule.hallId]).then(db_result => {
+        let sRow = []
+        Promise.resolve(hallPromise).then(() => {
+            for (let row of db_result.rows) {
+                sRow.push(new classes.Seat(row.nr, row.category, row.state))
+                if (sRow.length === numcols) {
+                    hall.seats.push(sRow)
+                    sRow = []
+                }
+            }
+        })
+    })
+
+    Promise.all([ticketsPromise, hallPromise, seatsPromise]).then(() => {
+        for (let row of hall.seats) {
+            for (let seat of row) {
+                if(ocupiedSeats.has(seat.id)) seat.state = "BOOKED"
+            }
+        }
+        response.status(200).send(hall)
+    }).catch(e => {
+        console.log(e)
+        response.status(500).send("error during calculating hall state")
     })
 })
 
