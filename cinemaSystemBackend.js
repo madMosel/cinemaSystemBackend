@@ -66,6 +66,11 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
         console.log("deleting schedules ... ")
         for (let ds of changes.deleteSchedules) {
             let duration = await transactionClient.query("select duration from movies where id = $1", [ds.movieId])
+            await transactionClient.query(`delete from tickets where
+             movieid = $1 and theaterid = $2 and period = $3`,
+                [ds.hallId, ds.movieId,
+                helpers.getScheduleTimeStringFromScheduleDateTime(ds.dateTime, duration.rows[0].duration)
+                ])
             await transactionClient.query(`delete from schedules where
              movieid = $1 and theaterid = $2 and period = $3`,
                 [ds.hallId, ds.movieId,
@@ -76,6 +81,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
 
         console.log("deleting movies ... ")
         for (let dm of changes.deleteMovies) {
+            await transactionClient.query("delete from tickets where movieid=$1", [dm.movieId])
             await transactionClient.query("delete from ratings where movieid=$1", [dm.movieId])
             await transactionClient.query(
                 `delete from movies where id=$1`, [dm.movieId]
@@ -84,6 +90,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
 
         console.log("deleting halls ... ")
         for (let dh of changes.deleteHalls) {
+            await transactionClient.query("delete from tickets where theaterid = $1", [dh.hallId])
             await transactionClient.query("delete from seats where theaterid = $1", [dh.hallId])
             await transactionClient.query("delete from theaters where id=$1", [dh.hallId])
         }
@@ -95,6 +102,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
                 await transactionClient.query(`update theaters set (name, numrows, numcols, dolby, d3, d4) = 
                                          ($1, $2, $3, $4, $5, $6) where id = $7`,
                     [h.hallName, h.seats.length, h.seats[0].length, h.dolby, h.d3, h.d4, h.hallId])
+                await transactionClient.query("delete from tickets where theaterid = $1", [h.hallId])
                 await transactionClient.query("delete from seats where theaterid = $1", [h.hallId])
                 console.log("updated theater " + h.hallId)
                 hallIdMap.set(h.hallId, h.hallId)
@@ -152,7 +160,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
             await transactionClient.query(`insert into schedules (movieId, theaterid, period) 
             values ($1, $2, $3)`, [
                 (s.movieId > 0 ? s.movieId : movieIdMap.get(s.movieId)),
-                s.hallId > 0 ? s.movieId : hallIdMap.get(s.hallId),
+                s.hallId > 0 ? s.hallId : hallIdMap.get(s.hallId),
                 helpers.getScheduleTimeStringFromScheduleDateTime(s.dateTime, duration)
             ])
             console.log("created schedule")
@@ -205,7 +213,7 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
 app.get("/load-public-data", function (request, response) {
     let halls = [], movies = [], schedules = []
     let hallMap = new Map(), geometryMap = new Map(), movieMap = new Map()
-    let theatersPromise = pool.query("select * from theaters").then(db_result => {
+    let theatersPromise = pool.query("select * from theaters order by id asc").then(db_result => {
         for (let row of db_result.rows) {
             let c = new classes.CinemaHall(row.id, row.name, [], row.dolby, row.d3, row.d4)
             halls.push(c)
@@ -226,7 +234,7 @@ app.get("/load-public-data", function (request, response) {
             })
         }
     })
-    let moviesPromise = pool.query("select * from movies").then(db_result => {
+    let moviesPromise = pool.query("select * from movies order by id asc").then(db_result => {
         for (let row of db_result.rows) {
             let m = new classes.Movie(row.id, row.title, row.age, row.duration, row.posterurl, row.description, [], row.price)
             movies.push(m)
@@ -368,10 +376,10 @@ app.post("/rate", userService.checkLogin, async function (request, response) {
         let username = loginModule.userMap.get(request.headers.authorization).username
         username = username.trim()
         let rating = JSON.parse(request.headers.rating)
-        let movieId = JSON.parse(request.headers.movieId)
-    
+        let movieId = JSON.parse(request.headers.movieid)
+
         let existingRating = undefined
-        await pool.query("select * from ratings where username = $1 and movieid = $2", [username, rating.movieId]).then(db_result => {
+        await pool.query("select * from ratings where username = $1 and movieid = $2", [username, movieId]).then(db_result => {
             for (let row of db_result.rows) existingRating = new classes.Rating(row.stars, row.msg, username)
         })
         if (!existingRating) {
@@ -386,7 +394,7 @@ app.post("/rate", userService.checkLogin, async function (request, response) {
                 [rating.stars, movieId, username])
         }
         response.status(200).send()
-        console.log("rated movie " + rating.movieId)
+        console.log("rated movie " + movieId)
     } catch (e) {
         console.log(e)
         response.status(500).send("error while rating")
