@@ -44,10 +44,7 @@ app.post("/sign-up", function (request, response) {
 
             pool.query("insert into users (username, type, password) values ($1::text, 'USER', $2::text)", [username, password])
                 .then(results => {
-                    response.status(200).json({
-                        "message": "sign up successful",
-                    })
-                    response.send("welcome " + username);
+                    response.status(200).send("welcome " + username);
                 })
                 .catch(error => { })
         })
