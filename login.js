@@ -27,8 +27,8 @@ router.post('/', (request, response) => {
             
             /* form the token with userData (accessible when decoding token), jwtkey, expiry time */
             const token = jwt.sign(resultUser,'secret')
-            userMap.set(token, new classes.Login(resultUser.login, resultUser.type))
-            console.log(new classes.Login(resultUser.login, resultUser.type).usertype)
+            userMap.set(token, new classes.Login(resultUser.username, resultUser.type))
+            console.log(new classes.Login(resultUser.username, resultUser.type).usertype)
 
             response.status(200).json({
                 username: resultUser.login,

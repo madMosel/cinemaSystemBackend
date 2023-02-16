@@ -12,7 +12,6 @@ function getScheduleTimeStringFromScheduleDateTime(dateTime, minutes) {
     let end = addMinutes(begin, minutes)
     let endString = end.getFullYear() + "-" + (end.getMonth() + 1) + "-" + end.getDate()
         + " " + end.getHours() + ":" + end.getMinutes()
-    console.log("[" + beginString + ", " + endString + "]")
     return "[" + beginString + ", " + endString + "]"
 }
 

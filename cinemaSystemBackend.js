@@ -16,9 +16,9 @@ const http = require('http')
 const io = require('socket.io')(http)
 
 const userService = require('./user_service');
-const loginRoutes = require('./login');
+const loginModule = require('./login');
 //here the login mehtod from login.js is called
-app.use("/login", loginRoutes.router);
+app.use("/login", loginModule.router);
 
 
 const helpers = require('./helper_functions');
@@ -310,6 +310,63 @@ app.post("/hall-state", userService.checkLogin, function (request, response) {
 })
 
 
+app.post("/buy-tickets", userService.checkLogin, async function (request, response) {
+    console.log("/buy-tickets")
+    let tickets = JSON.parse(request.headers.tickets)
+
+    console.log(tickets)
+
+    let transactionClient = await pool.connect()
+    try {
+        await transactionClient.query('BEGIN')
+
+        let duration
+        await transactionClient.query("select duration from movies where id = $1", [tickets[0].schedule.movieId])
+            .then(db_result => duration = db_result.rows[0].duration)
+        console.log(helpers.getScheduleTimeStringFromScheduleDateTime(tickets[0].schedule.dateTime, duration))
+        for (let t of tickets) {
+            await transactionClient.query(`insert into tickets (theaterid, movieid, period, seatnr, username) 
+                        values ($1, $2, $3, $4, $5)`,
+                [t.schedule.hallId, t.schedule.movieId,
+                helpers.getScheduleTimeStringFromScheduleDateTime(t.schedule.dateTime, duration),
+                t.seatId, t.username])
+        }
+
+        console.log("end transaction. committing...")
+        await transactionClient.query('COMMIT')
+        response.status(200).send()
+    } catch (e) {
+        console.log("errors during tickets transaction, rolling back...")
+        console.log(e)
+        await transactionClient.query('ROLLBACK')
+        response.status(500).send()
+    } finally {
+        transactionClient.release()
+    }
+})
+
+app.get("/tickets", userService.checkLogin, function (request, response) {
+    console.log("/tickets")
+    let username = loginModule.userMap.get(request.headers.authorization).username
+    username = username.trim()
+
+    pool.query("select * from tickets where username = $1::text", [username]).then(db_result => {
+        let tickets = []
+        for (let row of db_result.rows) {
+            tickets.push(
+                new classes.Ticket(
+                    new classes.Schedule(row.movieid, row.theaterid, helpers.parsePeriodToNiceDate(row.period)),
+                    username, row.seatnr
+                ))
+        }
+        response.status(200).send(tickets)
+    }).catch(e => {
+        console.log(e)
+        response.status(500).send("error while loading tickets!")
+    })
+})
+
+
 //REQUEST PRODUCT LIST FROM DATABASE AND SEND TO CLIENT
 app.get("/products", userService.checkLogin, function (request, response) {
     pool.query('SELECT * from users')
@@ -343,10 +400,6 @@ app.get('/products/?*', userService.checkLogin, function (request, response) {
             response.send("no such product")
         })
 })
-
-
-// TODO: the rest of the route handlers are mostly the same as in EX3 with important differences
-
 
 let port = 3000;
 app.listen(port);

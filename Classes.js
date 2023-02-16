@@ -134,7 +134,7 @@ class Login {
         username,
         usertype
     ) {
-        this.username = username
+        this.username = username.trim()
         this.usertype = usertype
     }
 }
