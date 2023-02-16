@@ -87,9 +87,8 @@ create table tickets (
 	period tsrange NOT NULL,
 	FOREIGN KEY (movieId, theaterId, period) references schedules (movieId, theaterId, period),
 	
-	seatnr NOT NULL
-	FOREIGN KEY (seatnr, theaterid) references seats(nr, theaterid)
-	
+	seatnr int NOT NULL,
+		
 	username char(15) NOT NULL,
 	constraint FK_username FOREIGN KEY (username) references users(username),
 

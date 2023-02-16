@@ -91,39 +91,55 @@ app.post("/update-database", userService.checkAdmin, async function (request, re
             await transactionClient.query("delete from theaters where id=$1", [dh.hallId])
         }
 
-        console.log("inserting new theaters...")
+        console.log("updating and inserting theaters...")
         let hallIdMap = new Map()
         for (let h of changes.halls) {
-            if (h.hallId >= 0) throw new Error("HallId positive or 0!")
-            let newHallId = (await transactionClient.query(`insert into theaters 
-            (numrows, numcols, name, dolby, d3, d4) 
-            values ($1, $2, $3, $4, $5, $6) returning id;`,
-                [h.seats.length, h.seats[0].length, h.hallName, h.dolby, h.d3, h.d4]
-            )).rows[0].id
+            if (h.hallId > 0) {
+                await transactionClient.query(`update theaters set (name, numrows, numcols, dolby, d3, d4) = 
+                                         ($1, $2, $3, $4, $5, $6) where id = $7`,
+                    [h.hallName, h.seats.length, h.seats[0].length, h.dolby, h.d3, h.d4, h.hallId])
+                await transactionClient.query("delete from seats where theaterid = $1", [h.hallId])
+                console.log("updated theater " + h.hallId)
+                hallIdMap.set(h.hallId, h.hallId)
+            }
+            else if (h.hallId == 0) throw new Error("HallId 0!")
+            else {
+                let newHallId = (await transactionClient.query(`insert into theaters 
+                                                                (numrows, numcols, name, dolby, d3, d4) 
+                                                                values ($1, $2, $3, $4, $5, $6) returning id;`,
+                    [h.seats.length, h.seats[0].length, h.hallName, h.dolby, h.d3, h.d4]
+                )).rows[0].id
 
+
+
+                console.log("new theater id: " + newHallId)
+                hallIdMap.set(h.hallId, newHallId)
+            }
             let countseats = 0;
             for (let row of h.seats) {
                 for (let seat of row) {
-                    transactionClient.query(`insert into seats (theaterid, nr, category, state)
-                        values ($1,$2,$3,$4)`,
-                        [newHallId, countseats++, seat.category, seat.state])
+                    await transactionClient.query(`insert into seats (theaterid, nr, category, state)
+                    values ($1,$2,$3,$4)`,
+                        [hallIdMap.get(h.hallId), countseats++, seat.category, seat.state])
                 }
             }
-
-
-            console.log("new theater id: " + newHallId)
-            hallIdMap.set(h.hallId, newHallId)
         }
 
         console.log("inserting new movies...")
         let movieIdMap = new Map()
         for (let m of changes.movies) {
-            if (m.movieId >= 0) if (h.hallId >= 0) throw new Error("Movie positive or 0!")
-            let newMovieId = await transactionClient.query(`insert into movies (title, age, duration, posterurl, description, price) 
-            values ($1, $2, $3, $4, $5, $6) returning id`,
-                [m.movieTitle, m.age, m.duration, (m.poster ? m.poster : 'd'), m.description, m.price])
-            console.log("created movie " + m.movieTitle)
-            movieIdMap.set(m.movieId, newMovieId.rows[0].id)
+            if (m.movieId > 0) {
+                await transactionClient.query(`update movies  set (title, age, duration, posterurl, description, price) = 
+                    ($1, $2, $3, $4, $5, $6) where id = $7`, [m.movieTitle, m.age, m.duration, (m.poster ? m.poster : 'default'), m.description, m.price, m.movieId])
+            }
+            else if (m.movieId == 0) throw new Error("Movie positive or 0!")
+            else {
+                let newMovieId = await transactionClient.query(`insert into movies (title, age, duration, posterurl, description, price) 
+                values ($1, $2, $3, $4, $5, $6) returning id`,
+                    [m.movieTitle, m.age, m.duration, (m.poster ? m.poster : 'default'), m.description, m.price])
+                console.log("created movie " + m.movieTitle)
+                movieIdMap.set(m.movieId, newMovieId.rows[0].id)
+            }
         }
 
         console.log("inserting new schedules...")
