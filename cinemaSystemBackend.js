@@ -34,7 +34,7 @@ app.get("/", (req, res) => {
 app.post("/sign-up", function (request, response) {
     let username = request.body.username;
     let password = request.body.password;
-    console.log("login: " + username + " " + password)
+    console.log("signing up : login: " + username + " " + password)
 
     // issue query (returns promise)
     pool.query("select * from users where username = $1::text", [username])
@@ -239,7 +239,7 @@ app.get("/load-public-data", function (request, response) {
     let raitingsPromise = pool.query("select * from ratings").then(db_result => {
         Promise.resolve(moviesPromise).then(() => {
             for (let row of db_result.rows) {
-                movieMap.get(row.movieid).ratings.push(new classes.Rating(row.stars, row.description))
+                movieMap.get(row.movieid).ratings.push(new classes.Rating(row.stars, row.msg, row.username))
             }
         })
     })
@@ -250,7 +250,6 @@ app.get("/load-public-data", function (request, response) {
     })
 
     Promise.all([theatersPromise, seatsPromise, moviesPromise, raitingsPromise, schedulesPromise]).then(() => {
-        console.log
         response.status(200).send({
             halls: halls,
             movies: movies,
@@ -366,39 +365,35 @@ app.get("/tickets", userService.checkLogin, function (request, response) {
     })
 })
 
-
-//REQUEST PRODUCT LIST FROM DATABASE AND SEND TO CLIENT
-app.get("/products", userService.checkLogin, function (request, response) {
-    pool.query('SELECT * from users')
-        .then(database_result => {
-            console.log(database_result)
-            console.log(database_result.rows[0].text)
-            response.status(200).send(database_result.rows)
+app.post("/rate", userService.checkLogin, async function (request, response) {
+    console.log("/rate")
+    try {
+        let username = loginModule.userMap.get(request.headers.authorization).username
+        username = username.trim()
+        let rating = JSON.parse(request.headers.rating)
+        let movieId = JSON.parse(request.headers.movieId)
+    
+        let existingRating = undefined
+        await pool.query("select * from ratings where username = $1 and movieid = $2", [username, rating.movieId]).then(db_result => {
+            for (let row of db_result.rows) existingRating = new classes.Rating(row.stars, row.msg, username)
         })
-        .catch(error => {
-            console.log(error)
-            response.send(error)
-        })
-})
-
-
-//REQUEST SINGLE PRODUCT DATA FROM DATABASE AND SEND TO CLIENT
-app.get('/products/?*', userService.checkLogin, function (request, response) {
-    console.log("GET /products/?* callback")
-    let pathname = url.parse(request.url).pathname
-    let product_id = pathname.replace("/products/", "")
-    console.log(product_id)
-
-    pool.query('SELECT * from products where id = $1::text', [product_id])
-        .then(database_result => {
-            console.log(database_result)
-            console.log(database_result.rows[0].text)
-            response.send(database_result.rows)
-        })
-        .catch(error => {
-            console.log(error)
-            response.send("no such product")
-        })
+        if (!existingRating) {
+            await pool.query("insert into ratings (stars, movieid, username) values ($1, $2, $3)", [rating.stars, movieId, username])
+            existingRating = rating
+        }
+        if (rating.description) {
+            await pool.query("update ratings set (stars, msg) = ($1, $2) where movieid = $3 and username = $4",
+                [rating.stars, rating.description, movieId, username])
+        } else {
+            await pool.query("update ratings set (stars, msg) = ($1, NULL) where movieid = $2 and username = $3",
+                [rating.stars, movieId, username])
+        }
+        response.status(200).send()
+        console.log("rated movie " + rating.movieId)
+    } catch (e) {
+        console.log(e)
+        response.status(500).send("error while rating")
+    }
 })
 
 let port = 3000;

@@ -39,29 +39,15 @@ class Movie {
 
 class Rating {
     constructor(
-        stars, description
+        stars, description, username
     ) {
         this.stars = stars
-        this.description = description.trim()
+        this.description = description
+        this.username = username.trim()
     }
 }
 
 const stars = [1, 2, 3, 4, 5]
-
-class LocalChanges {
-    constructor(
-        halls,
-        movies,
-        schedules,
-        deleteHalls,
-        deleteMovies,
-        deleteSchedules,
-        newHallCounter,
-        newMovieCounter
-    ) { }
-}
-
-
 
 class NiceDate {
     constructor(

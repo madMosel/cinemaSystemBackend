@@ -20,7 +20,10 @@ router.post('/', (request, response) => {
         .then(results => {
 
             // handle no match (login failed)
-            if (results.rows.length < 1) response.status(201).send("login failed");
+            if (results.rows.length < 1) {
+                response.status(201).send("login failed");
+                return
+            }
 
             // everything is ok
             let resultUser = results.rows[0]; //u can use =result.rows[o].login (login is the  name of the column in the DB)
@@ -38,10 +41,9 @@ router.post('/', (request, response) => {
 
         })
         .catch(error => {
-            // handle error accessing db
             console.log("server error during /login.querry()")
-            console.log(error)
             response.status(500).send("server error")
+            console.log(error)
         })
 });
 
