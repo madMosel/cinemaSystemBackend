@@ -1,8 +1,7 @@
 {
     "database": {
         "host": "localhost",
-        "user": "whaat",
-        "password": "firestorm1506",
-        "db": "cinemasytemdata"
+        "user": "mad_mosel",
+        "db": "cinema"
     }
 }

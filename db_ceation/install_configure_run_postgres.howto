@@ -1,0 +1,15 @@
+# installing postgres
+sudo pacman -S postgresql
+
+# configuring storage
+initdb -D /media/sda/postgre_data
+
+# start database server
+pg_ctl -D /media/sda/postgre_data -l logfile start
+
+#create superuser ( superuser > admin )
+createuser -s -W pgsu
+
+#create db
+createdb cinema
+
