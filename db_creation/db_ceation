@@ -1,0 +1,97 @@
+CREATE DATABASE cinemaSytemData WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
+
+
+create type usertype as enum ('ADMIN', 'USER');
+
+--list enums
+select n.nspname as enum_schema,  
+       usertype.typname as enum_name,  
+       e.enumlabel as enum_value
+from pg_type usertype 
+   join pg_enum e on usertype.oid = e.enumtypid  
+   join pg_catalog.pg_namespace n ON n.oid = usertype.typnamespace;
+
+
+--
+create table users(
+	username char(15) PRIMARY KEY NOT NULL,
+	type usertype NOT NULL,
+	password char(40) NOT NULL
+);
+
+insert into users (username, type, password) values ('root', 'ADMIN', 'root');
+
+create table theaters (
+	id serial PRIMARY KEY NOT NULL,
+	numRows int NOT NULL,
+	numCols int NOT NULL,
+	name char(40),
+	dolby bool,
+	d3 bool,
+	d4 bool
+);
+
+create type seatcategory as enum ('NORMAL', 'HANDICAP', 'PREMIUM');
+create type seatstate as enum ('FREE', 'RESERVED', 'BOOKED');
+
+create table seats (
+	theaterId int NOT NULL,
+	constraint FK_theaterId FOREIGN KEY (theaterId) references theaters(id),
+	
+	nr int NOT NULL,
+	category seatcategory NOT NULL,
+	state seatstate NOT NULL,
+	constraint seatKEY PRIMARY KEY (theaterId, nr)
+);
+
+create table movies (
+	id serial PRIMARY KEY NOT NULL,
+	title char(70) NOT NULL,
+	age int NOT NULL,
+	duration int NOT NULL,
+	posterUrl char(70),
+	description char(400),
+	price int NOT NULL
+);
+
+create type stars as enum ('1', '2', '3', '4', '5');
+
+create table ratings (
+	movieId int NOT NULL,
+	constraint FK_movieId FOREIGN KEY (movieId) references movies(id),
+	
+	username char(15) NOT NULL,
+	constraint FK_username FOREIGN KEY (username) references users(username),
+	
+	stars stars NOT NULL,
+	msg char(200),
+	constraint ratingKEY PRIMARY KEY (movieId, username)
+);
+
+CREATE EXTENSION btree_gist;
+create table schedules (
+	theaterId int NOT NULL,
+	constraint FK_theaterId FOREIGN KEY (theaterId) references theaters(id),
+	
+	movieId int NOT NULL,
+	constraint FK_movieId FOREIGN KEY (movieId) references movies(id),
+	
+	period tsrange NOT NULL,
+	EXCLUDE USING gist ( theaterid with =, movieid with = , period with &&),
+	constraint scheduleKEY PRIMARY KEY (movieId, theaterId, period)
+);
+
+create table tickets (
+	theaterid int NOT NULL,
+	movieId int NOT NULL,
+	period tsrange NOT NULL,
+	FOREIGN KEY (movieId, theaterId, period) references schedules (movieId, theaterId, period),
+	
+	seatnr int NOT NULL,
+		
+	username char(15) NOT NULL,
+	constraint FK_username FOREIGN KEY (username) references users(username),
+
+	constraint ticketsKEY PRIMARY KEY (movieId, theaterId, period, username, seatnr)
+);
+

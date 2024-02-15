@@ -1,0 +1,22 @@
+
+create or replace function check_schedule() returns trigger as $check_schedule$
+begin 
+    if ( 
+    select count(*) from schedules where
+    old.theaterid = new.theaterid and 
+    old.movieid = new.movieid and (
+       ( new.startdatetime >= startdatetime and new.startdatetime <= enddatetime ) or
+       ( new.startdatetime <= startdatetime and new.enddatetime >= startdatetime ) or
+       ( new.startdatetime <= startdatetime and new.enddatetime >= enddatetime ) or
+       ( new.startdatetime >= startdatetime and new.enddatetime <= enddatetime ) 
+    ) LIMIT 1 ) > 0 )
+    then raise exception 'conflicting schedule found';
+    end if;
+end;
+$check_schedule$ language plpgsql;
+
+create or replace trigger check_schedule before insert or update on schedules
+FOR EACH STATEMENT EXECUTE FUNCTION check_schedule();
+
+
+--DOESEN'T WORK

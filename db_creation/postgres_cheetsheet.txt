@@ -1,0 +1,4 @@
+POSTGRESS CHEAT SHEET
+\l 		list DBs
+\c <dbName> 	choose db
+\dt 		list tables

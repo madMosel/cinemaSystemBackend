@@ -1,0 +1,4 @@
+pg_ctl -D /media/sda/postgre_data -l /media/sda/postgres_log start
+pg_ctl -D /media/sda/postgre_data -l /media/sda/postgres_log stop
+
+psql -d cinema -h /media/sda/postgre_data/socket
